@@ -27,6 +27,7 @@ void createVerticalEdges(Node *list, int i, int j, int wV);
 void printAdjList(Node *adjList);
 void checkMaxFlow(Node *adjList);
 void printImage(Node *adjList);
+void freeList(Node *adjList);
 
 int m;
 int n;
@@ -109,6 +110,8 @@ int main() {
   printf("%d\n", maxFlow);
   // printf("\n");
   // printImage(adjList);
+
+  freeList(adjList);
 
   return 0;
 }
@@ -282,4 +285,16 @@ void printImage(Node *adjList) {
     }
     printf("\n");
   }
+}
+
+void freeList(Node *adjList) {
+  for (int i = 0; i < numNodes; i++) {
+    Node *head = &adjList[i];
+    while (head->edgeListHead != NULL) {
+      Edge *tmp = head->edgeListHead;
+      head->edgeListHead = tmp->next;
+      free(tmp);
+    }
+  }
+  free(adjList);
 }
