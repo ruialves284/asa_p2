@@ -4,6 +4,7 @@
 
 typedef struct node {
   int id;
+  char type;
   struct edge *edgeListHead;
   struct edge *edgeListTail;
 } Node;
@@ -17,19 +18,22 @@ typedef struct edge {
   struct edge *next;
 } Edge;
 
-void createSourceEdges(Node *list, int i, int j, int wLp);
+void createSourceEdge(Node *list, int i, int j, int wLp);
 void createSinkEdges(Node *list, int i, int j, int wCp);
 void createHorizontalEdges(Node *list, int i, int j, int wH);
 void createVerticalEdges(Node *list, int i, int j, int wV);
+
+// aux functions
 void printAdjList(Node *adjList);
+void checkMaxFlow(Node *adjList);
+void printImage(Node *adjList);
 
 int m;
 int n;
 int numNodes;
+int maxFlow;
 
 int main() {
-  int maxFlow;
-
   if (scanf("%d", &m) != 1) {
 		printf("Erro ao ler o numero de linhas");
 		return 1;
@@ -57,87 +61,88 @@ int main() {
   for (int i = 1; i <= m; i++) {
     for (int j = 1; j <= n; j++) {
       int wLp;
-      if (scanf("%d", &wLp) > 0) {
-        createSourceEdges(adjList, i, j, wLp);
+      if (scanf("%d", &wLp) > -1) {
+        createSourceEdge(adjList, i, j, wLp);
       }
     }
   }
 
-  printf("\n");
   getchar();
-  printAdjList(adjList);
+  maxFlow = 0;
 
   for (int i = 1; i <= m; i++) {
     for (int j = 1; j <= n; j++) {
       int wCp;
-      if (scanf("%d", &wCp) > 0) {
+      if (scanf("%d", &wCp) > -1) {
         createSinkEdges(adjList, i, j, wCp);
       }
     }
   }
 
-  printf("\n");
   getchar();
-  printAdjList(adjList);
 
   for (int i = 1; i <= m; i++) {
     for (int j = 1; j <= n-1; j++) {
       int wH;
-      if (scanf("%d", &wH) > 0) {
+      if (scanf("%d", &wH) > -1) {
         createHorizontalEdges(adjList, i, j, wH);
       }
     }
   }
 
-  printf("\n");
   getchar();
-  printAdjList(adjList);
 
   for (int i = 1; i <= m-1; i++) {
     for (int j = 1; j <= n; j++) {
       int wV;
-      if (scanf("%d", &wV) > 0) {
+      if (scanf("%d", &wV) > -1) {
         createVerticalEdges(adjList, i, j, wV);
       }
     }
   }
 
-  printf("\n");
-  printAdjList(adjList);
+  // printf("\n");
+  // printAdjList(adjList);
+  // printf("\n");
+  // checkMaxFlow(adjList);
+
+  printf("%d\n", maxFlow);
+  // printf("\n");
+  // printImage(adjList);
 
   return 0;
 }
 
-void createSourceEdges(Node *adjList, int i, int j, int wLp) {
+void createSourceEdge(Node *adjList, int i, int j, int wLp) {
   int nodeId = (i - 1) * n + j;
 
-  Edge *fromSrcEdge = (Edge*) malloc(sizeof(Edge));
-  fromSrcEdge->from = 0;
-  fromSrcEdge->to = nodeId;
-  fromSrcEdge->flow = wLp;
-  fromSrcEdge->capacity = wLp;
-  fromSrcEdge->next = NULL;
+  Edge *srcToPixel = (Edge*) malloc(sizeof(Edge));
+  srcToPixel->from = 0;
+  srcToPixel->to = nodeId;
+  srcToPixel->flow = wLp;
+  srcToPixel->capacity = wLp;
+  srcToPixel->next = NULL;
 
-  Edge *toSrcEdge = (Edge*) malloc(sizeof(Edge));
-  toSrcEdge->from = nodeId;
-  toSrcEdge->to = 0;
-  toSrcEdge->flow = wLp;
-  toSrcEdge->capacity = wLp;
-  toSrcEdge->next = NULL;
+  Edge *pixelToSrc = (Edge*) malloc(sizeof(Edge));
+  pixelToSrc->from = nodeId;
+  pixelToSrc->to = 0;
+  pixelToSrc->flow = wLp;
+  pixelToSrc->capacity = wLp;
+  pixelToSrc->next = NULL;
 
-  fromSrcEdge->reverse = toSrcEdge;
-  toSrcEdge->reverse = fromSrcEdge;
+  srcToPixel->reverse = pixelToSrc;
+  pixelToSrc->reverse = srcToPixel;
 
   if (adjList[0].edgeListHead == NULL) {
-    adjList[0].edgeListHead = fromSrcEdge;
-    adjList[0].edgeListTail = fromSrcEdge;
+    adjList[0].edgeListHead = srcToPixel;
+    adjList[0].edgeListTail = srcToPixel;
   } else {
-    adjList[0].edgeListTail->next = fromSrcEdge;
-    adjList[0].edgeListTail = fromSrcEdge;
+    adjList[0].edgeListTail->next = srcToPixel;
+    adjList[0].edgeListTail = srcToPixel;
   }
 
-  adjList[nodeId].edgeListHead = toSrcEdge;
-  adjList[nodeId].edgeListTail = toSrcEdge;
+  adjList[nodeId].edgeListHead = pixelToSrc;
+  adjList[nodeId].edgeListTail = pixelToSrc;
 }
 
 void createSinkEdges(Node *adjList, int i, int j, int wCp) {
@@ -145,106 +150,135 @@ void createSinkEdges(Node *adjList, int i, int j, int wCp) {
 
   int shortPathFlow;
 
-  Edge *toSrcEdge = adjList[nodeId].edgeListHead;
-  if (toSrcEdge->flow > wCp) {
+  Edge *pixelToSrc = adjList[nodeId].edgeListHead;
+  if (pixelToSrc->flow > wCp) {
     shortPathFlow = wCp;
-    toSrcEdge->flow = shortPathFlow;
-    toSrcEdge->reverse->flow = shortPathFlow;
+    pixelToSrc->flow = shortPathFlow;
+    pixelToSrc->reverse->flow = shortPathFlow;
+    // adjList[nodeId].type = 'C';
   } else {
-    shortPathFlow = toSrcEdge->flow;
+    shortPathFlow = pixelToSrc->flow;
+    // adjList[nodeId].type = 'P';
   }
+  maxFlow = maxFlow + shortPathFlow;
 
-  Edge *fromSinkEdge = (Edge*) malloc(sizeof(Edge));
-  fromSinkEdge->from = numNodes;
-  fromSinkEdge->to = nodeId;
-  fromSinkEdge->flow = shortPathFlow;
-  fromSinkEdge->capacity = wCp;
-  fromSinkEdge->next = NULL;
+  Edge *sinkToPixel = (Edge*) malloc(sizeof(Edge));
+  sinkToPixel->from = numNodes;
+  sinkToPixel->to = nodeId;
+  sinkToPixel->flow = shortPathFlow;
+  sinkToPixel->capacity = wCp;
+  sinkToPixel->next = NULL;
 
-  Edge *toSinkEdge = (Edge*) malloc(sizeof(Edge));
-  toSinkEdge->from = nodeId;
-  toSinkEdge->to = numNodes;
-  toSinkEdge->flow = shortPathFlow;
-  toSinkEdge->capacity = wCp;
-  toSinkEdge->next = NULL;
+  Edge *pixelToSink = (Edge*) malloc(sizeof(Edge));
+  pixelToSink->from = nodeId;
+  pixelToSink->to = numNodes;
+  pixelToSink->flow = shortPathFlow;
+  pixelToSink->capacity = wCp;
+  pixelToSink->next = NULL;
 
-  fromSinkEdge->reverse = toSinkEdge;
-  toSinkEdge->reverse = fromSinkEdge;
+  sinkToPixel->reverse = pixelToSink;
+  pixelToSink->reverse = sinkToPixel;
 
   if (adjList[numNodes].edgeListHead == NULL) {
-    adjList[numNodes].edgeListHead = fromSinkEdge;
-    adjList[numNodes].edgeListTail = fromSinkEdge;
+    adjList[numNodes].edgeListHead = sinkToPixel;
+    adjList[numNodes].edgeListTail = sinkToPixel;
   } else {
-    adjList[numNodes].edgeListTail->next = fromSinkEdge;
-    adjList[numNodes].edgeListTail = fromSinkEdge;
+    adjList[numNodes].edgeListTail->next = sinkToPixel;
+    adjList[numNodes].edgeListTail = sinkToPixel;
   }
 
-  adjList[nodeId].edgeListHead->next = toSinkEdge;
-  adjList[nodeId].edgeListTail = toSinkEdge;
+  adjList[nodeId].edgeListHead->next = pixelToSink;
+  adjList[nodeId].edgeListTail = pixelToSink;
 }
 
 void createHorizontalEdges(Node *adjList, int i, int j, int wH) {
   int leftId = (i - 1) * n + j;
   int rightId = (i - 1) * n + j + 1;
 
-  Edge *fromLeftEdge = (Edge*) malloc(sizeof(Edge));
-  fromLeftEdge->from = leftId;
-  fromLeftEdge->to = rightId;
-  fromLeftEdge->flow = 0;
-  fromLeftEdge->capacity = wH;
-  fromLeftEdge->next = NULL;
+  Edge *leftToRight = (Edge*) malloc(sizeof(Edge));
+  leftToRight->from = leftId;
+  leftToRight->to = rightId;
+  leftToRight->flow = 0;
+  leftToRight->capacity = wH;
+  leftToRight->next = NULL;
 
-  Edge *fromRightEdge = (Edge*) malloc(sizeof(Edge));
-  fromRightEdge->from = rightId;
-  fromRightEdge->to = leftId;
-  fromRightEdge->flow = 0;
-  fromRightEdge->capacity = wH;
-  fromRightEdge->next = NULL;
+  Edge *rightToLeft = (Edge*) malloc(sizeof(Edge));
+  rightToLeft->from = rightId;
+  rightToLeft->to = leftId;
+  rightToLeft->flow = 0;
+  rightToLeft->capacity = wH;
+  rightToLeft->next = NULL;
 
-  fromLeftEdge->reverse = fromRightEdge;
-  fromRightEdge->reverse = fromLeftEdge;
+  leftToRight->reverse = rightToLeft;
+  rightToLeft->reverse = leftToRight;
 
-  adjList[leftId].edgeListTail->next = fromLeftEdge;
-  adjList[leftId].edgeListTail = fromLeftEdge;
+  adjList[leftId].edgeListTail->next = leftToRight;
+  adjList[leftId].edgeListTail = leftToRight;
 
-  adjList[rightId].edgeListTail->next = fromRightEdge;
-  adjList[rightId].edgeListTail = fromRightEdge;
+  adjList[rightId].edgeListTail->next = rightToLeft;
+  adjList[rightId].edgeListTail = rightToLeft;
 }
 
 void createVerticalEdges(Node *adjList, int i, int j, int wV) {
   int upId = (i - 1) * n + j;
   int downId = (i - 1) * n + j + n;
 
-  Edge *fromUpEdge = (Edge*) malloc(sizeof(Edge));
-  fromUpEdge->from = upId;
-  fromUpEdge->to = downId;
-  fromUpEdge->flow = 0;
-  fromUpEdge->capacity = wV;
-  fromUpEdge->next = NULL;
+  Edge *upToDown = (Edge*) malloc(sizeof(Edge));
+  upToDown->from = upId;
+  upToDown->to = downId;
+  upToDown->flow = 0;
+  upToDown->capacity = wV;
+  upToDown->next = NULL;
 
-  Edge *fromDownEdge = (Edge*) malloc(sizeof(Edge));
-  fromDownEdge->from = downId;
-  fromDownEdge->to = upId;
-  fromDownEdge->flow = 0;
-  fromDownEdge->capacity = wV;
-  fromDownEdge->next = NULL;
+  Edge *downToUp = (Edge*) malloc(sizeof(Edge));
+  downToUp->from = downId;
+  downToUp->to = upId;
+  downToUp->flow = 0;
+  downToUp->capacity = wV;
+  downToUp->next = NULL;
 
-  fromUpEdge->reverse = fromDownEdge;
-  fromDownEdge->reverse = fromUpEdge;
+  upToDown->reverse = downToUp;
+  downToUp->reverse = upToDown;
 
-  adjList[upId].edgeListTail->next = fromUpEdge;
-  adjList[upId].edgeListTail = fromUpEdge;
+  adjList[upId].edgeListTail->next = upToDown;
+  adjList[upId].edgeListTail = upToDown;
 
-  adjList[downId].edgeListTail->next = fromDownEdge;
-  adjList[downId].edgeListTail = fromDownEdge;
+  adjList[downId].edgeListTail->next = downToUp;
+  adjList[downId].edgeListTail = downToUp;
 }
 
 void printAdjList(Node *adjList) {
   for (int i = 0; i <= numNodes; i++) {
     Edge *edge = adjList[i].edgeListHead;
     while (edge != NULL) {
-      printf("%d ", edge->reverse->flow); //pick property to print
+      printf("%d ", edge->to); //pick property to print
       edge = edge->next;
+    }
+    printf("\n");
+  }
+}
+
+void checkMaxFlow(Node *adjList) {
+  int srcSum = 0;
+  int sinkSum = 0;
+
+  for (int i = 1; i < numNodes; i++) {
+    srcSum += adjList[i].edgeListHead->flow;
+  }
+
+  for (int i = 1; i < numNodes; i++) {
+    sinkSum += adjList[i].edgeListHead->next->flow;
+  }
+
+  printf("srcSum = %d\n", srcSum);
+  printf("sinkSum = %d\n", sinkSum);
+}
+
+void printImage(Node *adjList) {
+  for (int i = 1; i <= m; i++) {
+    for (int j = 1; j <= n; j++) {
+      int nodeId = (i - 1) * n + j;
+      printf("%c ", adjList[nodeId].type);
     }
     printf("\n");
   }
