@@ -114,9 +114,19 @@ void createSourceEdges(Node *adjList, int i, int j, int wLp) {
   Edge *fromSrcEdge = (Edge*) malloc(sizeof(Edge));
   fromSrcEdge->from = 0;
   fromSrcEdge->to = nodeId;
-  fromSrcEdge->flow = 0;
+  fromSrcEdge->flow = wLp;
   fromSrcEdge->capacity = wLp;
   fromSrcEdge->next = NULL;
+
+  Edge *toSrcEdge = (Edge*) malloc(sizeof(Edge));
+  toSrcEdge->from = nodeId;
+  toSrcEdge->to = 0;
+  toSrcEdge->flow = wLp;
+  toSrcEdge->capacity = wLp;
+  toSrcEdge->next = NULL;
+
+  fromSrcEdge->reverse = toSrcEdge;
+  toSrcEdge->reverse = fromSrcEdge;
 
   if (adjList[0].edgeListHead == NULL) {
     adjList[0].edgeListHead = fromSrcEdge;
@@ -126,30 +136,40 @@ void createSourceEdges(Node *adjList, int i, int j, int wLp) {
     adjList[0].edgeListTail = fromSrcEdge;
   }
 
-  Edge *toSrcEdge = (Edge*) malloc(sizeof(Edge));
-  toSrcEdge->from = nodeId;
-  toSrcEdge->to = 0;
-  toSrcEdge->flow = 0;
-  toSrcEdge->capacity = wLp;
-  toSrcEdge->next = NULL;
-  toSrcEdge->reverse = fromSrcEdge;
-
   adjList[nodeId].edgeListHead = toSrcEdge;
   adjList[nodeId].edgeListTail = toSrcEdge;
-
-  fromSrcEdge->reverse = toSrcEdge;
-  printf("\n");
 }
 
 void createSinkEdges(Node *adjList, int i, int j, int wCp) {
   int nodeId = (i - 1) * n + j;
 
+  int shortPathFlow;
+
+  Edge *toSrcEdge = adjList[nodeId].edgeListHead;
+  if (toSrcEdge->flow > wCp) {
+    shortPathFlow = wCp;
+    toSrcEdge->flow = shortPathFlow;
+    toSrcEdge->reverse->flow = shortPathFlow;
+  } else {
+    shortPathFlow = toSrcEdge->flow;
+  }
+
   Edge *fromSinkEdge = (Edge*) malloc(sizeof(Edge));
   fromSinkEdge->from = numNodes;
   fromSinkEdge->to = nodeId;
-  fromSinkEdge->flow = 0;
+  fromSinkEdge->flow = shortPathFlow;
   fromSinkEdge->capacity = wCp;
   fromSinkEdge->next = NULL;
+
+  Edge *toSinkEdge = (Edge*) malloc(sizeof(Edge));
+  toSinkEdge->from = nodeId;
+  toSinkEdge->to = numNodes;
+  toSinkEdge->flow = shortPathFlow;
+  toSinkEdge->capacity = wCp;
+  toSinkEdge->next = NULL;
+
+  fromSinkEdge->reverse = toSinkEdge;
+  toSinkEdge->reverse = fromSinkEdge;
 
   if (adjList[numNodes].edgeListHead == NULL) {
     adjList[numNodes].edgeListHead = fromSinkEdge;
@@ -159,18 +179,8 @@ void createSinkEdges(Node *adjList, int i, int j, int wCp) {
     adjList[numNodes].edgeListTail = fromSinkEdge;
   }
 
-  Edge *toSinkEdge = (Edge*) malloc(sizeof(Edge));
-  toSinkEdge->from = nodeId;
-  toSinkEdge->to = numNodes;
-  toSinkEdge->flow = 0;
-  toSinkEdge->capacity = wCp;
-  toSinkEdge->next = NULL;
-  toSinkEdge->reverse = fromSinkEdge;
-
   adjList[nodeId].edgeListHead->next = toSinkEdge;
   adjList[nodeId].edgeListTail = toSinkEdge;
-
-  fromSinkEdge->reverse = toSinkEdge;
 }
 
 void createHorizontalEdges(Node *adjList, int i, int j, int wH) {
@@ -233,7 +243,7 @@ void printAdjList(Node *adjList) {
   for (int i = 0; i <= numNodes; i++) {
     Edge *edge = adjList[i].edgeListHead;
     while (edge != NULL) {
-      printf("%d ", edge->from); //pick property to print
+      printf("%d ", edge->reverse->flow); //pick property to print
       edge = edge->next;
     }
     printf("\n");
