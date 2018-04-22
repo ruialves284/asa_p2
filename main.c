@@ -50,8 +50,7 @@ int main() {
   getchar();
 
   numNodes = m * n + 1;
-
-  Node *adjList = (Node*) malloc(sizeof(Edge)*(numNodes));
+  Node *adjList = (Node*) malloc(sizeof(Node)*(numNodes+1));
 
   for (int i = 0; i <= numNodes; i++) {
     adjList[i].id = i;
@@ -102,10 +101,10 @@ int main() {
     }
   }
 
-  // printf("\n");
-  // printAdjList(adjList);
-  // printf("\n");
-  // checkMaxFlow(adjList);
+  printf("\n");
+  printAdjList(adjList);
+  printf("\n");
+  checkMaxFlow(adjList);
 
   printf("%d\n", maxFlow);
   // printf("\n");
@@ -254,7 +253,7 @@ void printAdjList(Node *adjList) {
   for (int i = 0; i <= numNodes; i++) {
     Edge *edge = adjList[i].edgeListHead;
     while (edge != NULL) {
-      printf("%d ", edge->to); //pick property to print
+      printf("%d ", edge->flow); //pick property to print
       edge = edge->next;
     }
     printf("\n");
@@ -288,7 +287,7 @@ void printImage(Node *adjList) {
 }
 
 void freeList(Node *adjList) {
-  for (int i = 0; i < numNodes; i++) {
+  for (int i = 0; i <= numNodes; i++) {
     Node *head = &adjList[i];
     while (head->edgeListHead != NULL) {
       Edge *tmp = head->edgeListHead;
