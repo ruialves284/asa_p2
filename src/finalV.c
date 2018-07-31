@@ -27,25 +27,23 @@ typedef struct queue{
 	int *vertices;
 } Queue;
 
-void createSourceEdge(Node *list, int i, int j, int wLp, int (*F)[]);
-void createSinkEdges(Node *list, int i, int j, int wCp, int (*F)[]);
-void createHorizontalEdges(Node *list, int i, int j, int wH);
-void createVerticalEdges(Node *list, int i, int j, int wV);
+/* Read input functions. */
+void createSourceEdge(Node *list, int i, int j, int wLp);
+void createSinkEdge(Node *list, int i, int j, int wCp);
+void createHorizontalEdge(Node *list, int i, int j, int wH);
+void createVerticalEdge(Node *list, int i, int j, int wV);
 
-int EdmondsKarp(Node *adjList, int numNodes, int (*F)[numNodes+1]);
-int BFS(Node *adjList, int nV, int (*F)[nV], int P[], int M[]);
-void bfs2(Node *adjList, int numNodes, int (*F)[numNodes+1]);
+/* Main behavior functions. */
+void EdmondsKarp(Node *adjList);
+int augmentingPathBFS(Node *adjList, int P[], int M[]);
+void minCutMappingBFS(Node *adjList);
+void printImage(Node *adjList);
+void freeList(Node *adjList);
 
+/* Queue auxiliary functions. */
 void initQueue(int size);
 void enqueue(int v);
 int dequeue();
-
-void printResMatrix(int numNodes, int (*F)[numNodes+1]);
-
-void printAdjList(Node *adjList);
-void checkMaxFlow(Node *adjList);
-void printImage(Node *adjList);
-void freeList(Node *adjList);
 
 int m;
 int n;
@@ -56,14 +54,14 @@ Queue BFSQueue;
 
 int main() {
   if (scanf("%d", &m) != 1) {
-		printf("Erro ao ler o numero de linhas");
+		printf("Erro ao ler o numero de linhas\n");
 		return 1;
 	}
 
   getchar();
 
   if (scanf("%d", &n) != 1) {
-		printf("Erro ao ler o numero de colunas");
+		printf("Erro ao ler o numero de colunas\n");
 		return 1;
 	}
 
@@ -73,26 +71,20 @@ int main() {
   numNodes = m * n + 1;
   Node *adjList = (Node*) malloc(sizeof(Node)*(numNodes+1));
 
+  /* Init adjacency list*/
   for (i = 0; i <= numNodes; i++) {
     adjList[i].id = i;
     adjList[i].edgeListHead = NULL;
     adjList[i].edgeListTail = NULL;
-    adjList[i].type = 'C';
-  }
-
-  int (*F)[numNodes+1] = malloc(sizeof(int[numNodes+1][numNodes+1]));
-
-  for(i = 0; i<numNodes+1; i++){
-  	for(j = 0; j<numNodes+1; j++){
-      F[i][j]=0;
-    }
+    /* Init all pixels as foreground ('Primeiro Plano')*/
+    adjList[i].type = 'P';
   }
 
   for (i = 1; i <= m; i++) {
     for (j = 1; j <= n; j++) {
       int wLp;
       if (scanf("%d", &wLp) > -1) {
-        createSourceEdge(adjList, i, j, wLp, F);
+        createSourceEdge(adjList, i, j, wLp);
       }
     }
   }
@@ -104,7 +96,7 @@ int main() {
     for (j = 1; j <= n; j++) {
       int wCp;
       if (scanf("%d", &wCp) > -1) {
-        createSinkEdges(adjList, i, j, wCp, F);
+        createSinkEdge(adjList, i, j, wCp);
       }
     }
   }
@@ -115,7 +107,7 @@ int main() {
     for (j = 1; j <= n-1; j++) {
       int wH;
       if (scanf("%d", &wH) > -1) {
-        createHorizontalEdges(adjList, i, j, wH);
+        createHorizontalEdge(adjList, i, j, wH);
       }
     }
   }
@@ -126,19 +118,17 @@ int main() {
     for (j = 1; j <= n; j++) {
       int wV;
       if (scanf("%d", &wV) > -1) {
-        createVerticalEdges(adjList, i, j, wV);
+        createVerticalEdge(adjList, i, j, wV);
       }
     }
   }
 
-  int u = EdmondsKarp(adjList, numNodes, F);
-  printf("%d\n",u);
+  EdmondsKarp(adjList);
 
-  /*printf("Matriz F\n");
-  printResMatrix(numNodes, F);*/
+  printf("%d\n\n",maxFlow);
 
-  bfs2(adjList, numNodes, F);
-  printf("\n");
+  minCutMappingBFS(adjList);
+
   printImage(adjList);
 
   freeList(adjList);
@@ -146,7 +136,7 @@ int main() {
   return 0;
 }
 
-void createSourceEdge(Node *adjList, int i, int j, int wLp, int (*F)[]) {
+void createSourceEdge(Node *adjList, int i, int j, int wLp) {
   int nodeId = (i - 1) * n + j;
 
   Edge *srcToPixel = (Edge*) malloc(sizeof(Edge));
@@ -177,31 +167,30 @@ void createSourceEdge(Node *adjList, int i, int j, int wLp, int (*F)[]) {
 
   adjList[nodeId].edgeListHead = pixelToSrc;
   adjList[nodeId].edgeListTail = pixelToSrc;
-
 }
 
-void createSinkEdges(Node *adjList, int i, int j, int wCp, int (*F)[]) {
+void createSinkEdge(Node *adjList, int i, int j, int wCp) {
   int nodeId = (i - 1) * n + j;
 
   int shortPathFlow;
 
+  /* Optimization. For each augmenting path consisting of only 2 edges,
+  saturate one of them (the one with least capacity)  when reading the input.*/
   Edge *pixelToSrc = adjList[nodeId].edgeListHead;
   if (pixelToSrc->flow > wCp) {
     shortPathFlow = wCp;
-    pixelToSrc->flow = shortPathFlow;
     pixelToSrc->reverse->flow = shortPathFlow;
   } else {
     shortPathFlow = pixelToSrc->flow;
   }
+
+  pixelToSrc->reverse->reverse = NULL;
+
+  /* the pixelToSrc edges were only created so that the access to
+  their reverse could be done in O(1) in this step. No longer needed, free it.*/
+  free(pixelToSrc);
+
   maxFlow = maxFlow + shortPathFlow;
-
-
-  Edge *sinkToPixel = (Edge*) malloc(sizeof(Edge));
-  sinkToPixel->from = numNodes;
-  sinkToPixel->to = nodeId;
-  sinkToPixel->flow = shortPathFlow;
-  sinkToPixel->capacity = wCp;
-  sinkToPixel->next = NULL;
 
   Edge *pixelToSink = (Edge*) malloc(sizeof(Edge));
   pixelToSink->from = nodeId;
@@ -209,23 +198,13 @@ void createSinkEdges(Node *adjList, int i, int j, int wCp, int (*F)[]) {
   pixelToSink->flow = shortPathFlow;
   pixelToSink->capacity = wCp;
   pixelToSink->next = NULL;
+  pixelToSink->reverse = NULL;
 
-  sinkToPixel->reverse = pixelToSink;
-  pixelToSink->reverse = sinkToPixel;
-
-  if (adjList[numNodes].edgeListHead == NULL) {
-    adjList[numNodes].edgeListHead = sinkToPixel;
-    adjList[numNodes].edgeListTail = sinkToPixel;
-  } else {
-    adjList[numNodes].edgeListTail->next = sinkToPixel;
-    adjList[numNodes].edgeListTail = sinkToPixel;
-  }
-
-  adjList[nodeId].edgeListHead->next = pixelToSink;
+  adjList[nodeId].edgeListHead = pixelToSink;
   adjList[nodeId].edgeListTail = pixelToSink;
 }
 
-void createHorizontalEdges(Node *adjList, int i, int j, int wH) {
+void createHorizontalEdge(Node *adjList, int i, int j, int wH) {
   int leftId = (i - 1) * n + j;
   int rightId = (i - 1) * n + j + 1;
 
@@ -253,7 +232,7 @@ void createHorizontalEdges(Node *adjList, int i, int j, int wH) {
   adjList[rightId].edgeListTail = rightToLeft;
 }
 
-void createVerticalEdges(Node *adjList, int i, int j, int wV) {
+void createVerticalEdge(Node *adjList, int i, int j, int wV) {
   int upId = (i - 1) * n + j;
   int downId = (i - 1) * n + j + n;
 
@@ -281,35 +260,6 @@ void createVerticalEdges(Node *adjList, int i, int j, int wV) {
   adjList[downId].edgeListTail = downToUp;
 }
 
-void printAdjList(Node *adjList) {
-  int i;
-  for (i = 0; i <= numNodes; i++) {
-    Edge *edge = adjList[i].edgeListHead;
-    while (edge != NULL) {
-      printf("%d ", edge->flow);
-      edge = edge->next;
-    }
-    printf("\n");
-  }
-}
-
-void checkMaxFlow(Node *adjList) {
-  int srcSum = 0;
-  int sinkSum = 0;
-  int i;
-
-  for (i = 1; i < numNodes; i++) {
-    srcSum += adjList[i].edgeListHead->flow;
-  }
-
-  for (i = 1; i < numNodes; i++) {
-    sinkSum += adjList[i].edgeListHead->next->flow;
-  }
-
-  printf("srcSum = %d\n", srcSum);
-  printf("sinkSum = %d\n", sinkSum);
-}
-
 void printImage(Node *adjList) {
   int i, j;
   for (i = 1; i <= m; i++) {
@@ -334,48 +284,42 @@ void freeList(Node *adjList) {
   free(adjList);
 }
 
-void initQueue(int numberOfVertices){
-	BFSQueue.capacity = numberOfVertices;
+void initQueue(int size){
+	BFSQueue.capacity = size;
 	BFSQueue.size = 0;
 	BFSQueue.front = 0;
 	BFSQueue.back = -1;
-	BFSQueue.vertices = (int*) malloc(sizeof(int) * numberOfVertices);
+	BFSQueue.vertices = (int*) malloc(sizeof(int) * size);
 }
 
 void enqueue(int v){
 	if(BFSQueue.size == BFSQueue.capacity){
-    printf("erro no enqueue\n");
+    printf("Erro no enqueue\n");
 		return;
 	}
-
-
-
 	BFSQueue.vertices[++BFSQueue.back] = v;
 	BFSQueue.size++;
 }
 
 int dequeue(){
 	int vertex = BFSQueue.vertices[BFSQueue.front++];
-
-
 	BFSQueue.size = BFSQueue.size - 1;
-
 	return vertex;
 }
 
-int EdmondsKarp(Node *adjList, int numNodes, int (*F)[numNodes+1]){
-	int nV = m*n + 2;
-	int flow = 0;
-
+void EdmondsKarp(Node *adjList){
   int i;
 
-	while(1){
-		int *M = (int*) malloc(sizeof(int)*nV);
-		int *P = (int*) malloc(sizeof(int)*nV);
+	while(1) {
+    /* Edmonds-Karp flow array. For each iteration saves the flow in each edge. */
+		int *M = (int*) malloc(sizeof(int)*(numNodes+1));
+
+    /* BFS parent array. Stores the previously visited pixel for each pixel. */
+		int *P = (int*) malloc(sizeof(int)*(numNodes+1));
 
 		int pathFlow;
 
-		for(i = 0; i < nV; i++){
+		for(i = 0; i <= numNodes; i++){
 			P[i] = -1;
 			M[i] = 0;
 		}
@@ -383,29 +327,44 @@ int EdmondsKarp(Node *adjList, int numNodes, int (*F)[numNodes+1]){
 		P[0] = -2;
 		M[0] = INT_MAX;
 
-		initQueue(nV);
+		initQueue(numNodes+1);
+
+    /* Start in the source. */
 		enqueue(0);
 
-		pathFlow = BFS(adjList, nV, F, P, M);
+		pathFlow = augmentingPathBFS(adjList, P, M);
 
+    /* No more augmenting paths exist. */
 		if (pathFlow == 0){
+      free(M);
+      free(P);
+      free(BFSQueue.vertices);
 			break;
 		}
 
-		flow = flow + pathFlow;
-		int v = nV - 1;
+		maxFlow = maxFlow + pathFlow;
+		int v = numNodes;
+
+    /* Update flow on each augmenting path's edge on the adjacency list.*/
 		while(v != 0){
-			int u = P[v];
-			F[u][v] = F[u][v] + pathFlow;
-			F[v][u] = F[v][u] - pathFlow;
+      int u = P[v];
+      Edge *edge = adjList[u].edgeListHead;
+      while (edge->to != v) {
+        edge = edge->next;
+      }
+      edge->flow+=pathFlow;
 			v = u;
 		}
+
+    free(M);
+    free(P);
+    free(BFSQueue.vertices);
 	}
-	return flow;
 }
 
-int BFS(Node *adjList, int nV, int (*F)[nV],int *P,int *M){
+int augmentingPathBFS(Node *adjList, int *P, int *M){
 	int pathFlow;
+  int arrivedToSink = 0;
 
 	while(BFSQueue.size > 0){
 		int u = dequeue();
@@ -413,56 +372,42 @@ int BFS(Node *adjList, int nV, int (*F)[nV],int *P,int *M){
 		Edge *edge = adjList[u].edgeListHead;
 
     while (edge != NULL) {
-
-			if(edge->capacity - F[u][edge->to] > 0 && P[edge->to] == -1){
+			if(P[edge->to] == -1 && edge->capacity > edge->flow){
 				P[edge->to] = u;
-				M[edge->to] = (M[u] < edge->capacity - F[u][edge->to]) ? M[u] : edge->capacity - F[u][edge->to];
+				M[edge->to] = (M[u] < edge->capacity - edge->flow) ? M[u] : edge->capacity - edge->flow;
 
-        if(edge->to != nV - 1){
+        if(edge->to != numNodes){
 					enqueue(edge->to);
-				} else{
-
-					pathFlow = M[nV-1];
-					return pathFlow;
-
+				} else {
+          arrivedToSink = 1;
+          break;
 				}
+
 			}
 		edge = edge->next;
 		}
-	}
-
-	return 0;
-}
-
-void printQueue() {
-  int front = BFSQueue.front;
-  int back = BFSQueue.back;
-
-  for (; front < back; front++) {
-    printf("%d \n", BFSQueue.vertices[front]);
-  }
-}
-
-void printResMatrix(int numNodes, int (*F)[numNodes+1]) {
-  int i, j;
-  for (i = 0; i < numNodes+1; i++) {
-    for (j = 0; j < numNodes+1; j++) {
-      printf("%d ", F[i][j]);
+    if (arrivedToSink) {
+      break;
     }
-    printf("\n");
-  }
-  printf("\n");
+	}
+  pathFlow = M[numNodes];
+  return pathFlow;
 }
 
-void bfs2(Node *adjList, int numNodes, int (*F)[numNodes+1]) {
+void minCutMappingBFS(Node *adjList) {
     initQueue(numNodes+1);
+
+    /* BFS array to mark visited edges. */
     int *visited = malloc(sizeof(int)*(numNodes+1));
-    memset(visited, 0, numNodes+1);
 
-    visited[numNodes] = 1;
+    int i;
+    for (i = 0; i <= numNodes; i++) {
+      visited[i] = 0;
+    }
 
-
-    enqueue(numNodes);
+    /* Start in the source. */
+    visited[0] = 1;
+    enqueue(0);
 
     while(BFSQueue.size > 0){
         int currentVertex = dequeue();
@@ -471,13 +416,15 @@ void bfs2(Node *adjList, int numNodes, int (*F)[numNodes+1]) {
 
        while(edge != NULL) {
             int adjVertex = edge->to;
+            if(visited[adjVertex] == 0 && edge->capacity-edge->flow > 0){
 
-            if(visited[adjVertex] == 0 && (F[currentVertex][adjVertex] < 0 && F[currentVertex][adjVertex]+edge->capacity > 0)){
                 visited[adjVertex] = 1;
                 enqueue(adjVertex);
-                adjList[adjVertex].type = 'P';
+                adjList[adjVertex].type = 'C';
             }
             edge = edge->next;
        }
     }
+    free(BFSQueue.vertices);
+    free(visited);
 }
